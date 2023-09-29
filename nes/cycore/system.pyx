@@ -321,116 +321,116 @@ cdef class NES:
 
         t_start = time.time()
 
-        while True:
-            vblank_started=False
-            while not vblank_started:
-                vblank_started = self.step(log_cpu)
+        # while True:
+        vblank_started=False
+        while not vblank_started:
+            vblank_started = self.step(log_cpu)
 
-            # update the controllers once per frame
-            self.controller1.update()
-            self.controller2.update()
+        # update the controllers once per frame
+        self.controller1.update()
+        self.controller2.update()
 
-            cpu_cycles = self.cpu.cycles_since_reset
+        cpu_cycles = self.cpu.cycles_since_reset
 
-            if time.time() - t_start > self.STATS_CALC_PERIOD_S:
-                # calcualte the fps and adaptive audio rate (only used when non-audio sync is in use)
-                dt = time.time() - t_start
-                fps = (frame - frame_start) * 1.0 / dt
-                buffer_surplus = self.apu.buffer_remaining() - TARGET_AUDIO_BUFFER_SAMPLES
+        if time.time() - t_start > self.STATS_CALC_PERIOD_S:
+            # calcualte the fps and adaptive audio rate (only used when non-audio sync is in use)
+            dt = time.time() - t_start
+            fps = (frame - frame_start) * 1.0 / dt
+            buffer_surplus = self.apu.buffer_remaining() - TARGET_AUDIO_BUFFER_SAMPLES
 
-                # adjust the rate based on the buffer change
-                adaptive_rate = int(SAMPLE_RATE - 0.5 * buffer_surplus / dt)
-                adaptive_rate = max(SAMPLE_RATE - MAX_RATE_DELTA, min(adaptive_rate, SAMPLE_RATE + MAX_RATE_DELTA))
-                t_start = time.time()
-                frame_start = frame
-            if show_hud:
-                # display information on the HUD (turn on/off with '1' key)
-                self.screen.add_text("{:.0f} fps, {}Hz, {} samples".format(fps, self.apu.get_rate(), self.apu.buffer_remaining()),
-                                     (self.OSD_FPS_X, self.OSD_Y),
-                                     self.OSD_TEXT_COLOR if fps > TARGET_FPS - 3 else self.OSD_WARN_COLOR)
-                if log_cpu:
-                    self.screen.add_text("logging cpu", (self.OSD_NOTE_X, self.OSD_Y), self.OSD_NOTE_COLOR)
-                if mute:
-                    self.screen.add_text("MUTE", (self.OSD_MUTE_X, self.OSD_Y), self.OSD_TEXT_COLOR)
+            # adjust the rate based on the buffer change
+            adaptive_rate = int(SAMPLE_RATE - 0.5 * buffer_surplus / dt)
+            adaptive_rate = max(SAMPLE_RATE - MAX_RATE_DELTA, min(adaptive_rate, SAMPLE_RATE + MAX_RATE_DELTA))
+            t_start = time.time()
+            frame_start = frame
+        if show_hud:
+            # display information on the HUD (turn on/off with '1' key)
+            self.screen.add_text("{:.0f} fps, {}Hz, {} samples".format(fps, self.apu.get_rate(), self.apu.buffer_remaining()),
+                                 (self.OSD_FPS_X, self.OSD_Y),
+                                 self.OSD_TEXT_COLOR if fps > TARGET_FPS - 3 else self.OSD_WARN_COLOR)
+            if log_cpu:
+                self.screen.add_text("logging cpu", (self.OSD_NOTE_X, self.OSD_Y), self.OSD_NOTE_COLOR)
+            if mute:
+                self.screen.add_text("MUTE", (self.OSD_MUTE_X, self.OSD_Y), self.OSD_TEXT_COLOR)
 
-            # Check for an exit
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    if audio:
-                        player.stop_stream()
-                        player.close()
-                        p.terminate()
-                    return
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_1:
-                        show_hud = not show_hud
-                    if event.key == pygame.K_0:
-                        if not mute:
-                            self.apu.set_volume(0)
-                            mute = True
-                        else:
-                            self.apu.set_volume(volume)
-                            mute = False
-                    if event.key == pygame.K_MINUS:
-                        volume = max(0, volume - 0.1)
+        # Check for an exit
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                if audio:
+                    player.stop_stream()
+                    player.close()
+                    p.terminate()
+                return
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_1:
+                    show_hud = not show_hud
+                if event.key == pygame.K_0:
+                    if not mute:
+                        self.apu.set_volume(0)
+                        mute = True
+                    else:
                         self.apu.set_volume(volume)
-                        self.screen.add_text("volume: " + "|" * int(10 * volume),
-                                             (self.OSD_VOL_X, self.OSD_Y),
-                                             self.OSD_TEXT_COLOR, ttl=30)
-                        mute=False
-                    if event.key == pygame.K_EQUALS:
-                        volume = min(1, volume + 0.1)
-                        self.apu.set_volume(volume)
-                        self.screen.add_text("volume: " + "|" * int(10 * volume),
-                                             (self.OSD_VOL_X, self.OSD_Y),
-                                             self.OSD_TEXT_COLOR, ttl=30)
-                        mute=False
-                    if event.key == pygame.K_2:
-                        log_cpu = not log_cpu
+                        mute = False
+                if event.key == pygame.K_MINUS:
+                    volume = max(0, volume - 0.1)
+                    self.apu.set_volume(volume)
+                    self.screen.add_text("volume: " + "|" * int(10 * volume),
+                                         (self.OSD_VOL_X, self.OSD_Y),
+                                         self.OSD_TEXT_COLOR, ttl=30)
+                    mute=False
+                if event.key == pygame.K_EQUALS:
+                    volume = min(1, volume + 0.1)
+                    self.apu.set_volume(volume)
+                    self.screen.add_text("volume: " + "|" * int(10 * volume),
+                                         (self.OSD_VOL_X, self.OSD_Y),
+                                         self.OSD_TEXT_COLOR, ttl=30)
+                    mute=False
+                if event.key == pygame.K_2:
+                    log_cpu = not log_cpu
 
 
-            # show the display (if using SYNC_VSYNC mode, this should provide a sync, which must be at 60Hz)
-            self.screen.show()
+        # show the display (if using SYNC_VSYNC mode, this should provide a sync, which must be at 60Hz)
+        self.screen.show()
 
-            if self.sync_mode == SYNC_AUDIO:
-                # wait for the audio buffer to empty, but only if the audio is playing
-                while self.apu.buffer_remaining() > TARGET_AUDIO_BUFFER_SAMPLES and audio and player.is_active():
-                    clock.tick(500)  # wait for about 2ms (~= 96 samples)
-            elif self.sync_mode == SYNC_VSYNC or self.sync_mode == SYNC_PYGAME:
-                # here we rely on an external sync source, but allow the audio to adapt to it
-                if frame > 2 * TARGET_FPS:  # wait a bit before doing this since startup can be slow
-                    self.apu.set_rate(adaptive_rate)
-            else:
-                # no sync at all, go as fast as we can!
-                pass
+        if self.sync_mode == SYNC_AUDIO:
+            # wait for the audio buffer to empty, but only if the audio is playing
+            while self.apu.buffer_remaining() > TARGET_AUDIO_BUFFER_SAMPLES and audio and player.is_active():
+                clock.tick(500)  # wait for about 2ms (~= 96 samples)
+        elif self.sync_mode == SYNC_VSYNC or self.sync_mode == SYNC_PYGAME:
+            # here we rely on an external sync source, but allow the audio to adapt to it
+            if frame > 2 * TARGET_FPS:  # wait a bit before doing this since startup can be slow
+                self.apu.set_rate(adaptive_rate)
+        else:
+            # no sync at all, go as fast as we can!
+            pass
 
-            if self.sync_mode == SYNC_PYGAME:
-                # if we are using pygame sync, we have to supply our own clock tick here
-                clock.tick(TARGET_FPS)
+        if self.sync_mode == SYNC_PYGAME:
+            # if we are using pygame sync, we have to supply our own clock tick here
+            clock.tick(TARGET_FPS)
 
-            if (audio
-                and not player.is_active()
-                and self.apu.buffer_remaining() > TARGET_AUDIO_BUFFER_SAMPLES
-                and (frame % 10 == 0)
-                ):
-                # sometimes the audio stream stops (e.g. if it runs out of samples) and has to be restarted or else the
-                # sound will stop.  Here try to (re)start the stream if it is not running if there is audio waiting.
-                audio_drop=True
-                player.stop_stream()
-                player.close()
-                player = p.open(format=pyaudio.paInt16,
-                                channels=1,
-                                rate=SAMPLE_RATE,
-                                output=True,
-                                frames_per_buffer=AUDIO_CHUNK_SAMPLES,  # 400 is a half-frame at 60Hz, 48kHz sound
-                                stream_callback=self.apu.pyaudio_callback,
-                                )
-                player.start_stream()
-            else:
-                audio_drop = False
+        if (audio
+            and not player.is_active()
+            and self.apu.buffer_remaining() > TARGET_AUDIO_BUFFER_SAMPLES
+            and (frame % 10 == 0)
+            ):
+            # sometimes the audio stream stops (e.g. if it runs out of samples) and has to be restarted or else the
+            # sound will stop.  Here try to (re)start the stream if it is not running if there is audio waiting.
+            audio_drop=True
+            player.stop_stream()
+            player.close()
+            player = p.open(format=pyaudio.paInt16,
+                            channels=1,
+                            rate=SAMPLE_RATE,
+                            output=True,
+                            frames_per_buffer=AUDIO_CHUNK_SAMPLES,  # 400 is a half-frame at 60Hz, 48kHz sound
+                            stream_callback=self.apu.pyaudio_callback,
+                            )
+            player.start_stream()
+        else:
+            audio_drop = False
 
-            frame += 1
+        frame += 1
 
     cpdef object run_frame_headless(self, int run_frames=1, object controller1_state=[False] * 8, object controller2_state=[False] * 8):
         """
